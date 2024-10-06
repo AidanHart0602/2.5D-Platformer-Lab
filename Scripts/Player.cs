@@ -11,20 +11,33 @@ public class Player : MonoBehaviour
     private Vector3 _direction, _velocity;
     [SerializeField]
     private Animator _anim;
-    private bool _ledgeGrabbing = false;
-    private bool _hanging = false;
-    // Start is called before the first frame update
+    private bool _ledgeGrabbed;
+    private LedgeCheck _ledge;
+
     void Start()
     {
         _controller = GetComponent<CharacterController>();
     }
-
-    // Update is called once per frame
+    
     void Update()
+    {
+        MovementCalc();
+        if(_ledgeGrabbed == true)
+        {
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                _anim.SetTrigger("Climb");
+                StartCoroutine(StandUpStart());
+            }
+        }
+    }
+
+    private void MovementCalc()
     {
         float horizontalInput = Input.GetAxis("Horizontal");
         if (_controller.isGrounded == true)
         {
+            _anim.SetBool("Jump", false);
             _direction = new Vector3(0, 0, horizontalInput);
             _velocity = _direction * _speed;
 
@@ -39,40 +52,36 @@ public class Player : MonoBehaviour
 
             if (Input.GetKeyDown(KeyCode.Space))
             {
-                if (_hanging == false && _ledgeGrabbing == false)
-                {
-                    _anim.SetTrigger("Jump");
-                    Debug.Log("Jumping");
-                    _velocity.y += _jump;
-                }
-
-                if(_hanging == true)
-                {
-             //       StartCoroutine(ClimbUp());
-           //         _hanging = false;
-                }
+                _anim.SetBool("Jump", true);
+                Debug.Log("Jumping");
+                _velocity.y += _jump;
             }
-          
         }
         _velocity.y -= _gravity;
         _controller.Move(_velocity * Time.deltaTime);
     }
-   /* IEnumerator ClimbUp()
-    {
-        _anim.SetTrigger("Climb");
-        //Move position of player on top of the platform
-        yield return new WaitForSeconds(3);
-        _ledgeGrabbing = false;
-        _controller.enabled = true;
-    }*/
 
-    public void LedgeGrabbed(Vector3 handPos)
+    public void LedgeGrabbed(Vector3 handPos, LedgeCheck CurrentLedge)
     {
+        _ledge = CurrentLedge;
         _controller.enabled = false;
-        _anim.SetTrigger("LedgeGrab");
+        _ledgeGrabbed = true;
+        _anim.SetBool("LedgeGrab", true);
         _anim.SetFloat("Speed", 0);
-        _ledgeGrabbing = true;
-        _hanging = true;
+        _anim.SetBool("Jump", false);
         transform.position = handPos;
+    }
+
+    IEnumerator StandUpStart()
+    {
+        _ledgeGrabbed = false;
+        yield return new WaitForSeconds(5.1f);
+        StandUpFinish();
+    }
+    public void StandUpFinish()
+    {
+        transform.position = _ledge.StandUpProgress();
+        _anim.SetBool("LedgeGrab", false);
+        _controller.enabled = true;
     }
 }
