@@ -14,7 +14,6 @@ public class LedgeCheck : MonoBehaviour
             player.LedgeGrabbed(_handPos, this);
         }
     }
-
     public Vector3 StandUpProgress()
     {
         return _bodyPos;
