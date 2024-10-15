@@ -15,7 +15,7 @@ public class MovingPlatform : MonoBehaviour
     }
 
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
         transform.position = Vector3.MoveTowards(transform.position, _currentPoint.position, 3 * Time.deltaTime);
 
@@ -34,6 +34,7 @@ public class MovingPlatform : MonoBehaviour
     {
         if (other.tag == "Player")
         {
+            Debug.Log("Made the player a child of the platform");
             other.transform.parent = this.transform;
         }
     }

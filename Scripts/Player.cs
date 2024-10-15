@@ -4,16 +4,17 @@ using UnityEngine;
 
 public class Player : MonoBehaviour
 {
-    [SerializeField]
-    private GameObject _model;
+    [SerializeField] private GameObject _model;
     private CharacterController _controller;
-    [SerializeField] private float _speed = 5, _gravity = 0.3f, _jump = 15;
-    private Vector3 direction, velocity;
+    [SerializeField] private float _speed = 5, _gravity = 0.3f, _jump = 15, _ladderSpeed = 3;
+    private Vector3 _direction, _velocity;
     [SerializeField]
-    private Animator _anim;
+    private float _rollDistance;
+    [SerializeField] private Animator _anim;
     private bool _ledgeGrabbed;
     private LedgeCheck _ledge;
     private bool _rolling = false;
+    private bool _ladderClimb;
     void Start()
     {
         _controller = GetComponent<CharacterController>();
@@ -21,7 +22,23 @@ public class Player : MonoBehaviour
 
     void Update()
     {
-        MovementCalc();
+        if (_rolling == false)
+        {
+            MovementCalc();
+        }
+
+        if(_ladderClimb == true)
+        {
+            LadderMovement();
+        }
+
+        if (_rolling == false && Input.GetKeyDown(KeyCode.LeftShift))
+        {
+            _rolling = true;
+            StartCoroutine(Rolling());
+
+        }
+
         if (_ledgeGrabbed == true)
         {
             if (Input.GetKeyDown(KeyCode.Space))
@@ -31,46 +48,76 @@ public class Player : MonoBehaviour
             }
         }
     }
-
+    private void LadderMovement()
+    {
+        float VerticalInput = Input.GetAxis("Vertical");
+        float HorizontalInput = Input.GetAxis("Horizontal");
+        if(VerticalInput != 0)
+        { 
+            if (transform.position.y < 10)
+            {
+                _direction = new Vector3(0, VerticalInput, 0);
+                _velocity = _direction * _ladderSpeed;
+                _controller.Move(_velocity * Time.deltaTime);
+            }
+        }
+        if(HorizontalInput != 0)
+        {
+            _direction = new Vector3(0, HorizontalInput, 0);
+            _velocity = _direction * _speed;
+        }
+    }
     private void MovementCalc()
     {
         float horizontalInput = Input.GetAxis("Horizontal");
         if (_controller.isGrounded == true)
         {
             _anim.SetBool("Jump", false);
-            direction = new Vector3(0, 0, horizontalInput);
-            velocity = direction * _speed;
+            _direction = new Vector3(0, 0, horizontalInput);
+            _velocity = _direction * _speed;
 
             _anim.SetFloat("Speed", Mathf.Abs(horizontalInput));
 
+            //Turning if statement
             if (horizontalInput != 0)
             {
                 Vector3 DirectionFace = transform.localEulerAngles;
-                DirectionFace.y = direction.z > 0 ? 0 : 180;
+                DirectionFace.y = _direction.z > 0 ? 0 : 180;
                 _model.transform.localEulerAngles = DirectionFace;
-            }
-
-            if (_rolling == false)
-            {
-                if (Input.GetKeyDown(KeyCode.LeftShift))
+                
+                if(DirectionFace.y == 180)
                 {
-                    velocity.x = 0;
-                    _anim.SetTrigger("Roll");
-                    _rolling = true;
+                    _rollDistance = -9;
+                }
+
+                else if(DirectionFace.y == 0)
+                {
+                    _rollDistance = 9;
                 }
             }
 
+            //Jumping if statement
             if (Input.GetKeyDown(KeyCode.Space))
             {
                 _anim.SetBool("Jump", true);
                 Debug.Log("Jumping");
-                velocity.y += _jump;
+                _velocity.y += _jump;
             }
         }
-        velocity.y -= _gravity;
-        _controller.Move(velocity * Time.deltaTime);
+        if(_ladderClimb == false)
+        {
+            _velocity.y -= _gravity * Time.deltaTime;
+        }
+        
+        _controller.Move(_velocity * Time.deltaTime);   
     }
-
+    IEnumerator Rolling()
+    {
+        _anim.SetTrigger("Roll");
+        yield return new WaitForSeconds(2.34f);
+        _controller.Move(new Vector3(0, 0, _rollDistance));
+        _rolling = false;
+    }
     public void LedgeGrabbed(Vector3 handPos, LedgeCheck CurrentLedge)
     {
         _ledge = CurrentLedge;
@@ -81,8 +128,6 @@ public class Player : MonoBehaviour
         _anim.SetBool("Jump", false);
         transform.position = handPos;
     }
-
-
 
     IEnumerator StandUpStart()
     {
@@ -96,18 +141,39 @@ public class Player : MonoBehaviour
         _anim.SetBool("LedgeGrab", false);
         _controller.enabled = true;
     }
-
-    public void RollingComplete()
+    private void ClimbLadder()
     {
-        if (transform.rotation.y == 0)
+        _ladderClimb = true;
+        _anim.SetFloat("Speed", 0);
+        _anim.SetBool("LadderClimb", true);
+    }
+
+    private void ExitLadder()
+    {
+        _ladderClimb = false;
+        _anim.SetBool("LadderClimb", false);
+    }
+    private void OnTriggerEnter(Collider other)
+    {
+        if(other.tag == "Ladder")
         {
-            _controller.Move(new Vector3(0, 0, 12.5f));
-            _rolling = false;
+            _ladderClimb = true;
         }
-        else
+    }
+    private void OnTriggerStay(Collider other)
+    {
+        float HorizontalInput = Input.GetAxis("Horizontal");
+        float VerticalInput = Input.GetAxis("Vertical");
+        if (other.tag == "Ladder")
         {
-            _controller.Move(new Vector3(0, 0, -12.5f));
-            _rolling = false;
+            if(VerticalInput != 0)
+            {
+                ClimbLadder();
+            }
+            if(HorizontalInput != 0)
+            {
+                ExitLadder();
+            }
         }
     }
 }

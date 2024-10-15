@@ -20,11 +20,7 @@ public class RollingBehaviour : StateMachineBehaviour
 
     override public void OnStateExit(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
-        var player = animator.gameObject.transform.parent.GetComponent<Player>();
-        if (player != null)
-        {
-            player.RollingComplete();
-        }
+      
     }
     // OnStateMove is called right after Animator.OnAnimatorMove()
     //override public void OnStateMove(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)

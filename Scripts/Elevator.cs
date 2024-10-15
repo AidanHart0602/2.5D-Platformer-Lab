@@ -28,22 +28,7 @@ public class Elevator : MonoBehaviour
             GoingUp();
         }
     }
-    private void OnTriggerEnter(Collider other)
-    {
-        if(other.tag == "Player")
-        {
-            Debug.Log("Entered Elevator");
-            other.transform.parent = this.transform;
-        }
-    }
 
-    private void OnTriggerExit(Collider other)
-    {
-        if (other.tag == "Player")
-        {
-            other.transform.parent = null;
-        }
-    }
     private void GoingUp()
     {
         transform.position = Vector3.MoveTowards(transform.position, _pointA.position, _speed * Time.deltaTime);
@@ -60,9 +45,25 @@ public class Elevator : MonoBehaviour
         while(1 == 1)
         {
             _direction = true;
-            yield return new WaitForSeconds(5.0f);
+            yield return new WaitForSeconds(10.0f);
             _direction = false;
-            yield return new WaitForSeconds(5.0f);
+            yield return new WaitForSeconds(10.0f);
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.tag == "Player")
+        {
+            other.transform.parent = this.transform;
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.tag == "Player")
+        {
+            other.transform.parent = null;
         }
     }
 }
