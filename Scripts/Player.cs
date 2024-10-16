@@ -6,7 +6,7 @@ public class Player : MonoBehaviour
 {
     [SerializeField] private GameObject _model;
     private CharacterController _controller;
-    [SerializeField] private float _speed = 5, _gravity = 0.3f, _jump = 15, _ladderSpeed = 3;
+    [SerializeField] private float _speed = 5, _gravity = 0.3f, _jump = 15, _ladderSpeed = 1.5f;
     private Vector3 _direction, _velocity;
     [SerializeField]
     private float _rollDistance;
@@ -14,9 +14,14 @@ public class Player : MonoBehaviour
     private bool _ledgeGrabbed;
     private LedgeCheck _ledge;
     private bool _rolling = false;
-    private bool _ladderClimb;
+    [SerializeField]
+    private bool _ladderActive = false, _startLadderClimb = false;
+    private Vector3 _directionFace;
+    [SerializeField]
+    private Vector3 _ladderPos, _finalLadderPos;
     void Start()
     {
+        _directionFace = transform.localEulerAngles;
         _controller = GetComponent<CharacterController>();
     }
 
@@ -26,12 +31,6 @@ public class Player : MonoBehaviour
         {
             MovementCalc();
         }
-
-        if(_ladderClimb == true)
-        {
-            LadderMovement();
-        }
-
         if (_rolling == false && Input.GetKeyDown(KeyCode.LeftShift))
         {
             _rolling = true;
@@ -48,68 +47,97 @@ public class Player : MonoBehaviour
             }
         }
     }
-    private void LadderMovement()
-    {
-        float VerticalInput = Input.GetAxis("Vertical");
-        float HorizontalInput = Input.GetAxis("Horizontal");
-        if(VerticalInput != 0)
-        { 
-            if (transform.position.y < 10)
-            {
-                _direction = new Vector3(0, VerticalInput, 0);
-                _velocity = _direction * _ladderSpeed;
-                _controller.Move(_velocity * Time.deltaTime);
-            }
-        }
-        if(HorizontalInput != 0)
-        {
-            _direction = new Vector3(0, HorizontalInput, 0);
-            _velocity = _direction * _speed;
-        }
-    }
     private void MovementCalc()
     {
-        float horizontalInput = Input.GetAxis("Horizontal");
-        if (_controller.isGrounded == true)
-        {
-            _anim.SetBool("Jump", false);
-            _direction = new Vector3(0, 0, horizontalInput);
-            _velocity = _direction * _speed;
-
-            _anim.SetFloat("Speed", Mathf.Abs(horizontalInput));
-
-            //Turning if statement
-            if (horizontalInput != 0)
+        if (_ladderActive == true)
+        { 
+            if (Input.GetKeyDown(KeyCode.W)) 
             {
-                Vector3 DirectionFace = transform.localEulerAngles;
-                DirectionFace.y = _direction.z > 0 ? 0 : 180;
-                _model.transform.localEulerAngles = DirectionFace;
-                
-                if(DirectionFace.y == 180)
-                {
-                    _rollDistance = -9;
-                }
-
-                else if(DirectionFace.y == 0)
-                {
-                    _rollDistance = 9;
-                }
-            }
-
-            //Jumping if statement
-            if (Input.GetKeyDown(KeyCode.Space))
-            {
-                _anim.SetBool("Jump", true);
-                Debug.Log("Jumping");
-                _velocity.y += _jump;
+                _controller.enabled = false;
+                _startLadderClimb = true;
+                transform.position = _ladderPos;
+                _directionFace.y = 0;
+                _model.transform.eulerAngles = _directionFace;
+                _ladderActive = false;
             }
         }
-        if(_ladderClimb == false)
+
+        if (_startLadderClimb == true)
         {
+            transform.rotation = Quaternion.Euler(0, 0, 0);
+            float verticalInput = Input.GetAxis("Vertical");
+
+            if (Input.GetKey("w") && transform.position.y < 7.5f)
+            {
+                _anim.SetBool("LadderClimb", true);
+                transform.position += Vector3.up * _ladderSpeed * Time.deltaTime;
+            }
+
+            else if (Input.GetKey("s") && transform.position.y > 0.6f)
+            {
+                transform.position += Vector3.down * _ladderSpeed * Time.deltaTime;
+            }
+
+            else if (transform.position.y > 7.5f)
+            {
+                _anim.SetTrigger("ClimbUp");
+           
+                _startLadderClimb = false;
+                StartCoroutine(LadderClimbUp());
+            }
+
+            else if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.D))
+            {
+                Debug.Log("Exiting");
+                _anim.SetBool("LadderClimb", false);
+                _startLadderClimb = false;
+                _controller.enabled = true;
+            }
+        }
+
+
+        if (_startLadderClimb == false)
+        {
+            float horizontalInput = Input.GetAxis("Horizontal");
+            if (_controller.isGrounded == true)
+            {
+                _anim.SetBool("Jump", false);
+                _direction = new Vector3(0, 0, horizontalInput);
+                _velocity = _direction * _speed;
+
+                _anim.SetFloat("Speed", Mathf.Abs(horizontalInput));
+
+                //Turning if statement
+                if (horizontalInput != 0)
+                {
+                    _directionFace.y = _direction.z > 0 ? 0 : 180;
+                    _model.transform.localEulerAngles = _directionFace;
+
+                    if (_directionFace.y == 180)
+                    {
+                        _rollDistance = -9;
+                    }
+
+                    else if (_directionFace.y == 0)
+                    {
+                        _rollDistance = 9;
+                    }
+                }
+
+                //Jumping if statement
+                if (Input.GetKeyDown(KeyCode.Space))
+                {
+                    _anim.SetBool("Jump", true);
+                    Debug.Log("Jumping");
+                    _velocity.y += _jump;
+                }
+            }
+
             _velocity.y -= _gravity * Time.deltaTime;
+
+            _controller.Move(_velocity * Time.deltaTime);
         }
-        
-        _controller.Move(_velocity * Time.deltaTime);   
+
     }
     IEnumerator Rolling()
     {
@@ -128,6 +156,13 @@ public class Player : MonoBehaviour
         _anim.SetBool("Jump", false);
         transform.position = handPos;
     }
+    IEnumerator LadderClimbUp()
+    {
+        yield return new WaitForSeconds(4f);
+        _anim.SetBool("LadderClimb", false);
+        transform.position = _finalLadderPos;
+        _controller.enabled = true;
+    }
 
     IEnumerator StandUpStart()
     {
@@ -141,39 +176,16 @@ public class Player : MonoBehaviour
         _anim.SetBool("LedgeGrab", false);
         _controller.enabled = true;
     }
-    private void ClimbLadder()
-    {
-        _ladderClimb = true;
-        _anim.SetFloat("Speed", 0);
-        _anim.SetBool("LadderClimb", true);
-    }
 
-    private void ExitLadder()
-    {
-        _ladderClimb = false;
-        _anim.SetBool("LadderClimb", false);
-    }
     private void OnTriggerEnter(Collider other)
     {
         if(other.tag == "Ladder")
         {
-            _ladderClimb = true;
-        }
-    }
-    private void OnTriggerStay(Collider other)
-    {
-        float HorizontalInput = Input.GetAxis("Horizontal");
-        float VerticalInput = Input.GetAxis("Vertical");
-        if (other.tag == "Ladder")
-        {
-            if(VerticalInput != 0)
+            Debug.Log("Detected Ladder");
+            if(_startLadderClimb == false)
             {
-                ClimbLadder();
-            }
-            if(HorizontalInput != 0)
-            {
-                ExitLadder();
-            }
+                _ladderActive = true;
+            }       
         }
     }
 }

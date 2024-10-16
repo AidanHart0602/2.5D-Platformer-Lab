@@ -36,7 +36,7 @@ public class Elevator : MonoBehaviour
 
     private void GoingDown() 
     {
-        transform.position = Vector3.MoveTowards(transform.position, _pointB.position, _speed *Time.deltaTime);
+        transform.position = Vector3.MoveTowards(transform.position, _pointB.position, _speed * Time.deltaTime);
     }
 
 
